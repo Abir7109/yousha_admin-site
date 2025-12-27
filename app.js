@@ -285,26 +285,44 @@ heroForm.addEventListener('submit', async (e) => {
 // --- Upload photo ---
 photoForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!photoFile.files[0]) return;
-  photoStatus.textContent = 'Uploading...';
+  if (!photoFile.files.length) return;
 
-  const form = new FormData();
-  form.append('file', photoFile.files[0]);
-  if (photoTitle.value.trim()) form.append('title', photoTitle.value.trim());
-  if (photoCaption.value.trim()) form.append('caption', photoCaption.value.trim());
+  const files = Array.from(photoFile.files);
+  const total = files.length;
+  let success = 0;
+  let failed = 0;
 
-  try {
-    await fetch(`${API_BASE}/api/admin/photos`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: form,
-    });
-    photoStatus.textContent = 'Uploaded ✓';
-    photoForm.reset();
-    loadPhotos();
-  } catch {
-    photoStatus.textContent = 'Upload failed';
+  photoStatus.textContent = `Uploading ${total} photo${total > 1 ? 's' : ''}...`;
+
+  for (const file of files) {
+    const form = new FormData();
+    form.append('file', file);
+    if (photoTitle.value.trim()) form.append('title', photoTitle.value.trim());
+    if (photoCaption.value.trim()) form.append('caption', photoCaption.value.trim());
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/photos`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: form,
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      success += 1;
+    } catch {
+      failed += 1;
+    }
   }
+
+  if (failed === 0) {
+    photoStatus.textContent = `Uploaded ${success} photo${success > 1 ? 's' : ''} ✓`;
+  } else if (success === 0) {
+    photoStatus.textContent = 'All uploads failed';
+  } else {
+    photoStatus.textContent = `Uploaded ${success}, failed ${failed}`;
+  }
+
+  photoForm.reset();
+  loadPhotos();
 });
 
 // --- Upload music ---
