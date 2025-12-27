@@ -191,19 +191,25 @@ async function loadPhotos() {
 async function loadMusic() {
   musicList.textContent = 'Loading...';
   try {
-    const list = await fetch(`${API_BASE}/api/admin/music`, {
-      headers: authHeaders(),
-    }).then((r) => r.json());
+    // Load both the music list and current config to know which is active
+    const [list, cfg] = await Promise.all([
+      fetch(`${API_BASE}/api/admin/music`, { headers: authHeaders() }).then((r) => r.json()),
+      fetch(`${API_BASE}/api/public/config`).then((r) => r.json())
+    ]);
 
     if (!Array.isArray(list) || list.length === 0) {
       musicList.textContent = 'No tracks yet.';
       return;
     }
 
+    const activeMusicId = cfg.activeMusic?._id || cfg.activeMusic?.id || null;
+
     musicList.innerHTML = '';
     list.forEach((m) => {
       const row = document.createElement('div');
       row.className = 'list-item';
+      const isActive = m._id === activeMusicId;
+      if (isActive) row.classList.add('list-item--active');
 
       const left = document.createElement('div');
       left.className = 'list-item-left';
@@ -212,12 +218,20 @@ async function loadMusic() {
       icon.className = 'thumb';
       icon.style.display = 'grid';
       icon.style.placeItems = 'center';
-      icon.textContent = '🎵';
+      icon.textContent = isActive ? '🎵 ✓' : '🎵';
 
       const meta = document.createElement('div');
       const t = document.createElement('div');
       t.className = 'item-title';
       t.textContent = m.title || 'Track';
+      if (isActive) {
+        const badge = document.createElement('span');
+        badge.textContent = ' (Active)';
+        badge.style.color = '#10b981';
+        badge.style.fontWeight = '600';
+        badge.style.fontSize = '12px';
+        t.appendChild(badge);
+      }
       const small = document.createElement('div');
       small.className = 'item-meta';
       small.textContent = new Date(m.createdAt).toLocaleString();
@@ -230,6 +244,29 @@ async function loadMusic() {
 
       const actions = document.createElement('div');
       actions.className = 'list-actions';
+
+      // Set Active button
+      if (!isActive) {
+        const setActive = document.createElement('button');
+        setActive.className = 'btn primary';
+        setActive.textContent = 'Set Active';
+        setActive.addEventListener('click', async () => {
+          try {
+            await fetch(`${API_BASE}/api/admin/config`, {
+              method: 'PUT',
+              headers: {
+                ...authHeaders(),
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ activeMusicId: m._id }),
+            });
+            loadMusic(); // Reload to show updated active state
+          } catch (err) {
+            alert('Failed to set active music: ' + err.message);
+          }
+        });
+        actions.appendChild(setActive);
+      }
 
       const del = document.createElement('button');
       del.className = 'btn ghost';

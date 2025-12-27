@@ -269,6 +269,12 @@ textarea:focus {
   border: 1px solid rgba(148, 163, 184, 0.35);
 }
 
+.list-item--active {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+}
+
 .list-item-left {
   display: flex;
   align-items: center;
